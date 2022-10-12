@@ -194,39 +194,35 @@ func WriteFieldStruct(context *Context, f *ast.Field) {
 	ProcessStruct(context.StartStruct(x), n.Obj().Name())
 }
 
-func WriteComment(c *Context, g *ast.CommentGroup) {
-	// comment regex
-	rc := regexp.MustCompile("^\\/\\/(.*)")
-	// "uncommented" regex
-	uc := regexp.MustCompile("^\\s*!td:unc\\s?(.*)")
-	// "skip" regex
-	sr := regexp.MustCompile("^\\s*!td:skip\\s*$")
-	// "follow" regex
-	fr := regexp.MustCompile("^\\s*!td:follow\\s*$")
+var regex_comment = regexp.MustCompile("^\\/\\/(.*)")
+var regex_flag_unc = regexp.MustCompile("^\\s*!td:unc\\s?(.*)")
+var regex_flag_skip = regexp.MustCompile("^\\s*!td:skip\\s*$")
+var regex_flag_follow = regexp.MustCompile("^\\s*!td:follow\\s*$")
 
+func WriteComment(c *Context, g *ast.CommentGroup) {
 	has_output := false
 	for _, l := range g.List {
 		// The current approach supports single-line comments. There is
 		// ambiguity regarding line prefixes and whitespace when parsing
 		// block comments. Since single-line comments are consistent, it
 		// avoids this ambiguity.
-		m := rc.FindStringSubmatch(l.Text)
+		m := regex_comment.FindStringSubmatch(l.Text)
 		if m == nil {
 			continue
 		}
 
 		// don't write flag
-		if f := sr.FindStringSubmatch(m[1]); f != nil {
+		if f := regex_flag_skip.FindStringSubmatch(m[1]); f != nil {
 			continue
 		}
 		// don't write flag
-		if f := fr.FindStringSubmatch(m[1]); f != nil {
+		if f := regex_flag_follow.FindStringSubmatch(m[1]); f != nil {
 			continue
 		}
 
 		// Do not emit a "#" when the line is intended to be uncommented.
 		// This is useful for supplying default values.
-		ug := uc.FindStringSubmatch(m[1])
+		ug := regex_flag_unc.FindStringSubmatch(m[1])
 		if ug != nil {
 			has_output = true
 			c.WriteLn(ug[1])
@@ -267,31 +263,22 @@ const (
 )
 
 func ParseCommentFlags(g *ast.CommentGroup) int {
-	// comment regex
-	cr := regexp.MustCompile("^\\/\\/(.*)")
-	// "skip" regex
-	sr := regexp.MustCompile("^\\s*!td:skip\\s*$")
-	// "follow" regex
-	fr := regexp.MustCompile("^\\s*!td:follow\\s*$")
-
 	flags := TD_NONE
 	for _, l := range g.List {
 		// The current approach supports single-line comments. There is
 		// ambiguity regarding line prefixes and whitespace when parsing
 		// block comments. Since single-line comments are consistent, it
 		// avoids this ambiguity.
-		m := cr.FindStringSubmatch(l.Text)
+		m := regex_comment.FindStringSubmatch(l.Text)
 		if m == nil {
 			continue
 		}
 
-		// should we skip this field?
-		if f := sr.FindStringSubmatch(m[1]); f != nil {
+		if f := regex_flag_skip.FindStringSubmatch(m[1]); f != nil {
 			flags = flags | TD_SKIP
 		}
 
-		// should we parse the structure type definition?
-		if f := fr.FindStringSubmatch(m[1]); f != nil {
+		if f := regex_flag_follow.FindStringSubmatch(m[1]); f != nil {
 			flags = flags | TD_FOLLOW
 		}
 	}
