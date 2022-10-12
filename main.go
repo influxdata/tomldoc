@@ -33,36 +33,25 @@ func NewContext(w io.Writer) *Context {
 	return &Context{
 		Packages: make(map[string]*Package),
 		Package:  nil,
-		Indent:   -1,
+		Indent:   0,
 		Writer:   w,
 	}
 }
 
-func (c *Context) IncIndent() *Context {
-	return &Context{
-		Packages: c.Packages,
-		Package:  c.Package,
-		Indent:   c.Indent + 1,
-		Writer:   c.Writer,
-	}
+func (c *Context) IncIndent() {
+	c.Indent += 1
 }
 
-func (c *Context) DecIndent() *Context {
-	return &Context{
-		Packages: c.Packages,
-		Package:  c.Package,
-		Indent:   c.Indent - 1,
-		Writer:   c.Writer,
-	}
+func (c *Context) DecIndent() {
+	c.Indent -= 1
 }
 
-func (c *Context) StartStruct(p *Package) *Context {
-	return &Context{
-		Packages: c.Packages,
-		Package:  p,
-		Indent:   c.Indent + 1,
-		Writer:   c.Writer,
-	}
+func (c *Context) SetPackage(p *Package) {
+	c.Package = p
+}
+
+func (c *Context) GetPackage() *Package {
+	return c.Package
 }
 
 func (c *Context) WriteLn(line string) {
@@ -191,7 +180,11 @@ func WriteFieldStruct(context *Context, f *ast.Field) {
 		return
 	}
 
-	ProcessStruct(context.StartStruct(x), n.Obj().Name())
+	prev := context.Package
+
+	context.SetPackage(x)
+	ProcessStruct(context, n.Obj().Name())
+	context.SetPackage(prev)
 }
 
 var regex_comment = regexp.MustCompile("^\\/\\/(.*)")
@@ -323,18 +316,24 @@ func ProcessField(context *Context, f *ast.Field) {
 			// fashion as inlined non-"anonymous" structs. However, these
 			// are parsed in a different manner.
 			if s, ok := f.Type.(*ast.StructType); ok {
+				context.IncIndent()
 				WriteStructHeader(context, f.Names[0].Name, TD_STRUCT)
 				for _, f := range s.Fields.List {
-					ProcessField(context.IncIndent(), f)
+					ProcessField(context, f)
 				}
+				context.DecIndent()
 			} else {
 				if Type_IsStruct(t) && (flags&TD_FOLLOW != 0) {
 					if Type_IsArray(t) {
 						WriteStructHeader(context, f.Names[0].Name, TD_STRUCT_ARRAY)
+						context.IncIndent()
 						WriteFieldStruct(context, f)
+						context.DecIndent()
 					} else {
 						WriteStructHeader(context, f.Names[0].Name, TD_STRUCT)
+						context.IncIndent()
 						WriteFieldStruct(context, f)
+						context.DecIndent()
 					}
 				}
 			}
@@ -345,7 +344,7 @@ func ProcessField(context *Context, f *ast.Field) {
 		// be exported. "anonymous" fields are not exported. However, a
 		// struct may contain an exported "named" field.
 		if Type_IsStruct(t) && (flags&TD_FOLLOW != 0) {
-			WriteFieldStruct(context.DecIndent(), f)
+			WriteFieldStruct(context, f)
 		}
 	}
 
@@ -380,6 +379,7 @@ func ProcessStruct(context *Context, s_name string) {
 			if decl.Doc != nil {
 				WriteComment(context, decl.Doc)
 			}
+
 			for _, f := range s.Fields.List {
 				ProcessField(context, f)
 			}
@@ -487,7 +487,8 @@ is supplied while "$GOPACKAGE" is present, this takes priority.`)
 				continue
 			}
 
-			ProcessStruct(context.StartStruct(p), *ft)
+			context.SetPackage(p)
+			ProcessStruct(context, *ft)
 		}
 	}
 }
