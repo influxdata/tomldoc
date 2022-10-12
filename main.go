@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -180,12 +179,6 @@ func Type_LoadPackage(pkgs *map[string]Package, t *types.Named) *Package {
 	}
 
 	return nil
-}
-
-func WriteIndent(context *Context) {
-	for i := 0; i < context.Indent; i++ {
-		fmt.Printf("  ")
-	}
 }
 
 func WriteFieldStruct(context *Context, f *ast.Field) {
