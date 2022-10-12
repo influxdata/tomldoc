@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 	// go internal
 	"go/ast"
 	"go/parser"
@@ -25,7 +26,7 @@ type Package struct {
 type Context struct {
 	Packages map[string]*Package
 	Package  *Package
-	Indent   int
+	Stack    []string
 	Writer   io.Writer
 }
 
@@ -33,17 +34,17 @@ func NewContext(w io.Writer) *Context {
 	return &Context{
 		Packages: make(map[string]*Package),
 		Package:  nil,
-		Indent:   0,
+		Stack:    make([]string, 0),
 		Writer:   w,
 	}
 }
 
-func (c *Context) IncIndent() {
-	c.Indent += 1
+func (c *Context) IncIndent(name string) {
+	c.Stack = append(c.Stack, name)
 }
 
 func (c *Context) DecIndent() {
-	c.Indent -= 1
+	c.Stack = c.Stack[:len(c.Stack)-1]
 }
 
 func (c *Context) SetPackage(p *Package) {
@@ -55,7 +56,7 @@ func (c *Context) GetPackage() *Package {
 }
 
 func (c *Context) WriteLn(line string) {
-	for i := 0; i < c.Indent; i++ {
+	for i := 0; i < len(c.Stack); i++ {
 		c.Writer.Write([]byte{' ', ' '})
 	}
 	c.Writer.Write([]byte(line))
@@ -174,11 +175,29 @@ func Type_LoadPackage(context *Context, t *types.Named) *Package {
 	return p
 }
 
+func Field_GetTag(field *ast.Field, tag string) *string {
+	regex_tag := regexp.MustCompile("(?:^`\\s*|\\s+)" + tag + "(?:\\:\\\"(.*?)\\\")?")
+
+	if field.Tag == nil {
+		return nil
+	}
+
+	if m := regex_tag.FindStringSubmatch(field.Tag.Value); m != nil {
+		if len(m) > 1 {
+			return &m[1]
+		} else {
+			return new(string)
+		}
+	}
+
+	return nil
+}
+
 func WriteFieldStruct(context *Context, f *ast.Field) {
 	t := Field_GetType(context.Package, f)
 
 	n := Type_GetNamed(t)
-	if n == nil {
+	if n == nil || n.Obj() == nil {
 		return
 	}
 
@@ -292,11 +311,19 @@ const (
 )
 
 func WriteStructHeader(c *Context, name string, t int) {
+	path := strings.Join(c.Stack, ".")
+
+	if len(path) == 0 {
+		path = name
+	} else {
+		path = path + "." + name
+	}
+
 	switch t {
 	case TD_STRUCT:
-		c.WriteLn("[" + name + "]")
+		c.WriteLn("[" + path + "]")
 	case TD_STRUCT_ARRAY:
-		c.WriteLn("[[" + name + "]]")
+		c.WriteLn("[[" + path + "]]")
 	}
 }
 
@@ -317,14 +344,20 @@ func ProcessField(context *Context, f *ast.Field) {
 	}
 
 	if len(f.Names) > 0 {
+		name := f.Names[0].Name
+		toml := Field_GetTag(f, "toml")
+		if toml != nil && *toml != "-" && *toml != "" {
+			name = *toml
+		}
+
 		if ast.IsExported(f.Names[0].Name) {
 			// The struct field is not "anonymous". However, the field type
 			// is an "anonymous" struct. :-) These are rendered in the same
 			// fashion as inlined non-"anonymous" structs. However, these
 			// are parsed in a different manner.
 			if s, ok := f.Type.(*ast.StructType); ok {
-				context.IncIndent()
-				WriteStructHeader(context, f.Names[0].Name, TD_STRUCT)
+				WriteStructHeader(context, name, TD_STRUCT)
+				context.IncIndent(name)
 				for _, f := range s.Fields.List {
 					ProcessField(context, f)
 				}
@@ -332,16 +365,13 @@ func ProcessField(context *Context, f *ast.Field) {
 			} else {
 				if Type_IsStruct(t) && (flags&TD_FOLLOW != 0) {
 					if Type_IsArray(t) {
-						WriteStructHeader(context, f.Names[0].Name, TD_STRUCT_ARRAY)
-						context.IncIndent()
-						WriteFieldStruct(context, f)
-						context.DecIndent()
+						WriteStructHeader(context, name, TD_STRUCT_ARRAY)
 					} else {
-						WriteStructHeader(context, f.Names[0].Name, TD_STRUCT)
-						context.IncIndent()
-						WriteFieldStruct(context, f)
-						context.DecIndent()
+						WriteStructHeader(context, name, TD_STRUCT)
 					}
+					context.IncIndent(name)
+					WriteFieldStruct(context, f)
+					context.DecIndent()
 				}
 			}
 		}
@@ -354,7 +384,6 @@ func ProcessField(context *Context, f *ast.Field) {
 			WriteFieldStruct(context, f)
 		}
 	}
-
 }
 
 func ProcessStruct(context *Context, s_name string) {
