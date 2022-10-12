@@ -409,10 +409,9 @@ is supplied while "$GOPACKAGE" is present, this takes priority.`)
 	// specified. This conditionally ensures that either the
 	// parameters or the environment specify the "package"
 	// parameter.
-	if (*ft == "" || *fo == "") ||
-		(*fp == "" && ep == "") {
+	if (*ft == "" || *fo == "") || (*fp == "" && ep == "") {
 		flag.Usage()
-        os.Exit(1)
+		os.Exit(1)
 	}
 
 	p_target := ep
