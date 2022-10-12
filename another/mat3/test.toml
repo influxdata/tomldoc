@@ -1,0 +1,91 @@
+##
+## Mat3
+##
+
+[[A]]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  
+  [D]
+    ##
+    ## Delta
+    ##
+    
+    # delta
+    # d = <unix-epoch>
+    
+[B]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  
+  [D]
+    ##
+    ## Delta
+    ##
+    
+    # delta
+    # d = <unix-epoch>
+    
+[C]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  
+  [D]
+    ##
+    ## Delta
+    ##
+    
+    # delta
+    # d = <unix-epoch>
+    
+##
+## Vec3
+##
+
+# x component
+x = 0.0
+
+# y component
+y = 0.0
+
+# z component
+z = 0.0
+
+[D]
+  ##
+  ## Delta
+  ##
+  
+  # delta
+  # d = <unix-epoch>
+  

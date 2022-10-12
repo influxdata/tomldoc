@@ -139,6 +139,10 @@ func Type_GetNamed(t types.Type) *types.Named {
 }
 
 func Type_LoadPackage(context *Context, t *types.Named) *Package {
+	if t.Obj() == nil || t.Obj().Pkg() == nil {
+		panic("Object or Package cannot be nil!")
+	}
+
 	path := t.Obj().Pkg().Path()
 
 	if p, ok := context.Packages[path]; ok {
@@ -163,7 +167,10 @@ func Type_LoadPackage(context *Context, t *types.Named) *Package {
 		}
 	}
 
-	p, _ := context.Packages[path]
+	p, ok := context.Packages[path]
+	if !ok {
+		panic("Could not load package: " + path)
+	}
 	return p
 }
 
