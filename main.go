@@ -23,7 +23,7 @@ type Package struct {
 }
 
 type Context struct {
-	Packages map[string]Package
+	Packages map[string]*Package
 	Package  *Package
 	Indent   int
 	Writer   io.Writer
@@ -31,7 +31,7 @@ type Context struct {
 
 func NewContext(w io.Writer) *Context {
 	return &Context{
-		Packages: make(map[string]Package),
+		Packages: make(map[string]*Package),
 		Package:  nil,
 		Indent:   -1,
 		Writer:   w,
@@ -149,11 +149,11 @@ func Type_GetNamed(t types.Type) *types.Named {
 	return x
 }
 
-func Type_LoadPackage(pkgs *map[string]Package, t *types.Named) *Package {
+func Type_LoadPackage(context *Context, t *types.Named) *Package {
 	path := t.Obj().Pkg().Path()
 
-	if p, ok := (*pkgs)[path]; ok {
-		return &p
+	if p, ok := context.Packages[path]; ok {
+		return p
 	}
 
 	config := loader.Config{
@@ -166,7 +166,7 @@ func Type_LoadPackage(pkgs *map[string]Package, t *types.Named) *Package {
 	}
 
 	for _, pkgInfo := range prog.InitialPackages() {
-		(*pkgs)[path] = Package{
+		context.Packages[path] = &Package{
 			Fset:      prog.Fset,
 			Files:     pkgInfo.Files,
 			Path:      pkgInfo.Pkg.Path(),
@@ -174,11 +174,8 @@ func Type_LoadPackage(pkgs *map[string]Package, t *types.Named) *Package {
 		}
 	}
 
-	if p, ok := (*pkgs)[path]; ok {
-		return &p
-	}
-
-	return nil
+	p, _ := context.Packages[path]
+	return p
 }
 
 func WriteFieldStruct(context *Context, f *ast.Field) {
@@ -189,7 +186,7 @@ func WriteFieldStruct(context *Context, f *ast.Field) {
 		return
 	}
 
-	x := Type_LoadPackage(&context.Packages, n)
+	x := Type_LoadPackage(context, n)
 	if x == nil {
 		return
 	}
@@ -468,7 +465,7 @@ is supplied while "$GOPACKAGE" is present, this takes priority.`)
 		// implementing functions to handle each representation of the same
 		// data, convert the data to our own representation.
 		context.Packages[p.PkgPath] =
-			Package{
+			&Package{
 				Path:      p.PkgPath,
 				Fset:      p.Fset,
 				Files:     p.Syntax,
@@ -504,7 +501,7 @@ is supplied while "$GOPACKAGE" is present, this takes priority.`)
 				continue
 			}
 
-			ProcessStruct(context.StartStruct(&p), *ft)
+			ProcessStruct(context.StartStruct(p), *ft)
 		}
 	}
 }
