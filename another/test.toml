@@ -1,0 +1,46 @@
+##
+## Mat3
+##
+
+[A]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  
+[B]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  
+[C]
+  ##
+  ## Vec3
+  ##
+  
+  # x component
+  x = 0.0
+  
+  # y component
+  y = 0.0
+  
+  # z component
+  z = 0.0
+  

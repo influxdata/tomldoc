@@ -1,0 +1,13 @@
+##
+## Vec3
+##
+
+# x component
+x = 0.0
+
+# y component
+y = 0.0
+
+# z component
+z = 0.0
+
