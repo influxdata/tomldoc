@@ -1,0 +1,51 @@
+##
+## Baz
+##
+
+[A]
+  ##
+  ## Bar
+  ##
+  
+  [A.Foo]
+    ##
+    ## Foo
+    ##
+    
+    F = "example"
+    
+[B]
+  ##
+  ## Bar
+  ##
+  
+  [B.Foo]
+    ##
+    ## Foo
+    ##
+    
+    F = "example"
+    
+[[C]]
+  ##
+  ## Bar
+  ##
+  
+  [C.Foo]
+    ##
+    ## Foo
+    ##
+    
+    F = "example"
+    
+##
+## Bar
+##
+
+[Foo]
+  ##
+  ## Foo
+  ##
+  
+  F = "example"
+  

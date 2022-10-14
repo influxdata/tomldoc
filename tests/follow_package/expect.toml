@@ -8,13 +8,13 @@
   ##
   
   # x component
-  x = 0.0
+  X = 0.0
   
   # y component
-  y = 0.0
+  Y = 0.0
   
   # z component
-  z = 0.0
+  Z = 0.0
   
 [B]
   ##
@@ -22,13 +22,13 @@
   ##
   
   # x component
-  x = 0.0
+  X = 0.0
   
   # y component
-  y = 0.0
+  Y = 0.0
   
   # z component
-  z = 0.0
+  Z = 0.0
   
 [C]
   ##
@@ -36,11 +36,11 @@
   ##
   
   # x component
-  x = 0.0
+  X = 0.0
   
   # y component
-  y = 0.0
+  Y = 0.0
   
   # z component
-  z = 0.0
+  Z = 0.0
   

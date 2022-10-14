@@ -1,0 +1,42 @@
+#!/bin/bash
+set -o errexit \
+    -o nounset \
+    -o pipefail
+
+path="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+
+declare -a targets=(
+  'simple'
+  'follow'
+  'follow_package'
+  'export'
+  'skip'
+  'tomltag'
+)
+
+declare -a structs=(
+  'Vec4'  # simple
+  'Baz'   # follow
+  'Mat3'  # follow_package
+  'Vec3'  # export
+  'Foo'   # skip
+  'Bar'   # tomltag
+)
+
+for ((i=0 ; i<${#targets[@]} ; i++))
+do
+  target="${targets[$i]}"
+  struct="${structs[$i]}"
+
+  printf 'Testing %s...\n' "${target}"
+
+  pushd "${path}/tests/${target}" &>/dev/null
+
+  "${path}/tomldoc" -p github.com/influxdata/tomldoc/tests -t "${struct}" -o result.toml
+
+   cmp \
+    "${path}/tests/${target}/expect.toml" \
+    "${path}/tests/${target}/result.toml"
+
+  popd &>/dev/null
+done
