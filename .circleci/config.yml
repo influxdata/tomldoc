@@ -1,0 +1,33 @@
+---
+version: 2.1
+
+executors:
+  ubuntu-latest:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: small
+
+jobs:
+  build-and-test:
+    executor: ubuntu-latest
+    steps:
+      - checkout
+      - run:
+          name: Install Dependencies
+          command: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            sudo apt-get install -y golang
+      - run:
+          name: Build Tomldoc
+          command: |
+            go build ./...
+      - run:
+          name: Execute Tests
+          command: |
+            ./test
+
+workflows:
+  build:
+    jobs:
+      - build-and-test

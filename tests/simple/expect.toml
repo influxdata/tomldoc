@@ -1,0 +1,16 @@
+##
+## Vec4
+##
+
+# x component
+X = 0.0
+
+# y component
+Y = 0.0
+
+# z component
+Z = 0.0
+
+# w component
+W = 1.0
+

@@ -63,7 +63,43 @@ func (c *Context) WriteLn(line string) {
 	c.Writer.Write([]byte{'\n'})
 }
 
-func Field_GetType(p *Package, f *ast.Field) types.Type {
+func (c *Context) WriteHeader(name string, t int) {
+	path := strings.Join(c.Stack, ".")
+
+	if len(path) == 0 {
+		path = name
+	} else {
+		path = path + "." + name
+	}
+
+	switch t {
+	case TD_STRUCT:
+		c.WriteLn("[" + path + "]")
+	case TD_STRUCT_ARRAY:
+		c.WriteLn("[[" + path + "]]")
+	}
+}
+
+
+func Field_GetTag(field *ast.Field, tag string) *string {
+	regex_tag := regexp.MustCompile("(?:^`\\s*|\\s+)" + tag + "(?:\\:\\\"(.*?)\\\")?")
+
+	if field.Tag == nil {
+		return nil
+	}
+
+	if m := regex_tag.FindStringSubmatch(field.Tag.Value); m != nil {
+		if len(m) > 1 {
+			return &m[1]
+		} else {
+			return new(string)
+		}
+	}
+
+	return nil
+}
+
+func Field_GetType(p *Package, field *ast.Field) types.Type {
 	var unwrap func(t ast.Expr) *ast.Ident
 
 	// `p.TypesInfo.Defs` maps `*ast.Ident` to `types.Type`. Sometimes `f.type`
@@ -82,10 +118,10 @@ func Field_GetType(p *Package, f *ast.Field) types.Type {
 		return nil
 	}
 
-	if len(f.Names) > 0 {
-		return p.TypesInfo.Defs[f.Names[0]].Type()
+	if len(field.Names) > 0 {
+		return p.TypesInfo.Defs[field.Names[0]].Type()
 	} else {
-		return p.TypesInfo.Defs[unwrap(f.Type)].Type()
+		return p.TypesInfo.Defs[unwrap(field.Type)].Type()
 	}
 }
 
@@ -175,25 +211,7 @@ func Type_LoadPackage(context *Context, t *types.Named) *Package {
 	return p
 }
 
-func Field_GetTag(field *ast.Field, tag string) *string {
-	regex_tag := regexp.MustCompile("(?:^`\\s*|\\s+)" + tag + "(?:\\:\\\"(.*?)\\\")?")
-
-	if field.Tag == nil {
-		return nil
-	}
-
-	if m := regex_tag.FindStringSubmatch(field.Tag.Value); m != nil {
-		if len(m) > 1 {
-			return &m[1]
-		} else {
-			return new(string)
-		}
-	}
-
-	return nil
-}
-
-func WriteFieldStruct(context *Context, f *ast.Field) {
+func ProcessFieldStruct(context *Context, f *ast.Field) {
 	t := Field_GetType(context.Package, f)
 
 	n := Type_GetNamed(t)
@@ -310,23 +328,6 @@ const (
 	TD_STRUCT_ARRAY = 1 // generates "[[NAME]]"
 )
 
-func WriteStructHeader(c *Context, name string, t int) {
-	path := strings.Join(c.Stack, ".")
-
-	if len(path) == 0 {
-		path = name
-	} else {
-		path = path + "." + name
-	}
-
-	switch t {
-	case TD_STRUCT:
-		c.WriteLn("[" + path + "]")
-	case TD_STRUCT_ARRAY:
-		c.WriteLn("[[" + path + "]]")
-	}
-}
-
 func ProcessField(context *Context, f *ast.Field) {
 	t := Field_GetType(context.Package, f)
 
@@ -339,24 +340,28 @@ func ProcessField(context *Context, f *ast.Field) {
 		return
 	}
 
-	if f.Doc != nil {
-		WriteComment(context, f.Doc)
+	toml := Field_GetTag(f, "toml")
+	if toml != nil && *toml == "-" {
+		return
 	}
 
 	if len(f.Names) > 0 {
 		name := f.Names[0].Name
-		toml := Field_GetTag(f, "toml")
 		if toml != nil && *toml != "-" && *toml != "" {
 			name = *toml
 		}
 
 		if ast.IsExported(f.Names[0].Name) {
+			if f.Doc != nil {
+				WriteComment(context, f.Doc)
+			}
+
 			// The struct field is not "anonymous". However, the field type
 			// is an "anonymous" struct. :-) These are rendered in the same
 			// fashion as inlined non-"anonymous" structs. However, these
 			// are parsed in a different manner.
 			if s, ok := f.Type.(*ast.StructType); ok {
-				WriteStructHeader(context, name, TD_STRUCT)
+                context.WriteHeader(name, TD_STRUCT)
 				context.IncIndent(name)
 				for _, f := range s.Fields.List {
 					ProcessField(context, f)
@@ -365,12 +370,12 @@ func ProcessField(context *Context, f *ast.Field) {
 			} else {
 				if Type_IsStruct(t) && (flags&TD_FOLLOW != 0) {
 					if Type_IsArray(t) {
-						WriteStructHeader(context, name, TD_STRUCT_ARRAY)
+                        context.WriteHeader(name, TD_STRUCT_ARRAY)
 					} else {
-						WriteStructHeader(context, name, TD_STRUCT)
+                        context.WriteHeader(name, TD_STRUCT)
 					}
 					context.IncIndent(name)
-					WriteFieldStruct(context, f)
+					ProcessFieldStruct(context, f)
 					context.DecIndent()
 				}
 			}
@@ -381,7 +386,11 @@ func ProcessField(context *Context, f *ast.Field) {
 		// be exported. "anonymous" fields are not exported. However, a
 		// struct may contain an exported "named" field.
 		if Type_IsStruct(t) && (flags&TD_FOLLOW != 0) {
-			WriteFieldStruct(context, f)
+			if f.Doc != nil {
+				WriteComment(context, f.Doc)
+			}
+
+			ProcessFieldStruct(context, f)
 		}
 	}
 }
